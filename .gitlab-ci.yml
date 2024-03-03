@@ -1,0 +1,68 @@
+stages:          
+  - style
+  - build
+  - test
+  - deploy
+
+style-job:
+  stage: style
+  tags: 
+    - style
+  script:
+    - echo "Beginning style test"
+    - clang-format -n -style=Google src/**/*.c src/**/*.h
+    - clang-format -i -style=Google src/**/*.c src/**/*.h
+    - git diff --exit-code
+    - echo "End of style test"
+  after_script:
+    - bash src/bot.sh CI
+
+build-job:       
+  stage: build
+  tags:
+    - build
+  script:
+    - echo "Compiling the code..."
+    - cd src/cat && make s21_cat    
+    - cd ../grep && make s21_grep
+    - echo "Compile complete."
+  artifacts:
+    paths:
+      - src/cat/s21_cat
+      - src/grep/s21_grep
+    expire_in: 30 days
+  after_script:
+    - bash src/bot.sh CI
+
+test-cat-job:
+  stage: test
+  tags:
+    - test
+  script:
+    - echo "Beginning tests for s21_cat"
+    - cd src/cat 
+    - make tests || exit 1
+  after_script:
+    - bash src/bot.sh CI
+
+test-grep-job:
+  stage: test
+  tags:
+    - test
+  script:
+    - echo "Beginning tests for s21_grep"
+    - cd src/grep 
+    - make tests || exit 1
+  after_script:
+    - bash src/bot.sh CI
+
+deploy-job:
+  stage: deploy
+  tags:
+    - deploy
+  script: 
+    - chmod 777 src/deploy.sh
+    - bash src/deploy.sh
+  after_script:
+    - bash src/bot.sh CD
+  when: manual
